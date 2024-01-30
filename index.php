@@ -26,7 +26,9 @@
                         </div>
                     </div>
 
-                    <div class="card-body" id="response">
+                    <div class="card-body">
+                        <div id="alert"></div>
+                        <div id="response"></div>
                         <!-- <table class="table table-bordered m-0">
                             <thead>
                                 <tr>
@@ -118,6 +120,7 @@
                     addAlertElement.innerHTML = alert(result.success, "success");
                     nameAddElement.value = "";
                     emailAddElement.value = "";
+                    showUsers();
                 } else if (result.failure) {
                     addAlertElement.innerHTML = alert(result.failure, "danger");
                 } else {
@@ -132,19 +135,19 @@
             const response = await fetch("./api/show-users.php");
             const result = await response.json();
 
-            if(result.length > 0) {
+            if (result.length > 0) {
                 let rowsElement = "";
                 let sr = 1;
-                result.forEach(function (user) {
+                result.forEach(function(user) {
                     rowsElement += `<tr>
                                     <td>${sr++}</td>
                                     <td>${user.name}</td>
                                     <td>${user.email}</td>
                                     <td>
-                                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#editModal">
+                                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" onclick="editUser(${user.id})" data-bs-target="#editModal">
                                             Edit
                                         </button>
-                                        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                        <button type="button" class="btn btn-danger" data-bs-toggle="modal" onclick="deleteUser(${user.id})" data-bs-target="#deleteModal">
                                             Delete
                                         </button>
                                     </td>
@@ -167,7 +170,135 @@
             } else {
                 responseElement.innerHTML = `<div class="alert alert-info m-0">No record found!</div>`;
             }
-            // console.log(result);
+        }
+
+        let mainId = 0;
+
+        async function editUser(id) {
+            mainId = id;
+            const data = {
+                id: id,
+                submit: 1,
+            };
+
+            const response = await fetch("./api/show-single.php", {
+                method: 'POST',
+                body: JSON.stringify(data),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const result = await response.json();
+
+            const nameEditElement = document.querySelector("#name-edit");
+            const emailEditElement = document.querySelector("#email-edit");
+
+            nameEditElement.value = result.name;
+            emailEditElement.value = result.email;
+        }
+
+        const editFormElement = document.querySelector("#edit-form");
+        const editAlertElement = document.querySelector("#edit-alert");
+
+        editFormElement.addEventListener("submit", async function(e) {
+            e.preventDefault();
+
+            const nameEditElement = document.querySelector("#name-edit");
+            const emailEditElement = document.querySelector("#email-edit");
+
+            let nameEditValue = nameEditElement.value;
+            let emailEditValue = emailEditElement.value;
+
+            nameEditElement.classList.remove('is-invalid');
+            emailEditElement.classList.remove('is-invalid');
+
+            editAlertElement.innerHTML = "";
+
+            if (nameEditValue == "") {
+                nameEditElement.classList.add('is-invalid');
+                editAlertElement.innerHTML = alert("Provide your name!", "danger");
+            } else if (emailEditValue == "") {
+                emailEditElement.classList.add('is-invalid');
+                editAlertElement.innerHTML = alert("Provide your email!", "danger");
+            } else {
+                const data = {
+                    name: nameEditValue,
+                    email: emailEditValue,
+                    id: mainId,
+                    submit: 1
+                };
+
+                const response = await fetch("./api/edit-user.php", {
+                    method: "POST",
+                    body: JSON.stringify(data),
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.nameError) {
+                    nameEditElement.classList.add('is-invalid');
+                    editAlertElement.innerHTML = alert(result.nameError, "danger");
+                } else if (result.emailError) {
+                    emailEditElement.classList.add('is-invalid');
+                    editAlertElement.innerHTML = alert(result.emailError, "danger");
+                } else if (result.success) {
+                    editAlertElement.innerHTML = alert(result.success, "success");
+                    showUsers();
+                } else if (result.failure) {
+                    editAlertElement.innerHTML = alert(result.failure, "danger");
+                } else {
+                    editAlertElement.innerHTML = alert("Something went wrong!", "danger");
+                }
+            }
+        });
+
+        function deleteUser(id) {
+            mainId = id;
+        }
+
+        const deleteFormElement = document.querySelector("#delete-form");
+        const alertElement = document.querySelector("#alert");
+
+        deleteFormElement.addEventListener("submit", async function(e) {
+            e.preventDefault();
+
+            const data = {
+                id: mainId,
+                submit: 1
+            };
+
+            const response = await fetch("./api/delete-user.php", {
+                method: "POST",
+                body: JSON.stringify(data),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alertElement.innerHTML = alert(result.success, "success");
+                showUsers();
+            } else if (result.failure) {
+                alertElement.innerHTML = alert(result.failure, "danger");
+            } else {
+                alertElement.innerHTML = alert("Something went wrong!", "danger");
+            }
+            closeDeleteModal();
+        });
+
+        function closeDeleteModal() {
+            const modalElement = document.querySelector('#deleteModal');
+            const modal = bootstrap.Modal.getInstance(modalElement);
+
+            if (modal) {
+                modal.hide();
+            }
         }
 
         function alert(msg, cls) {
